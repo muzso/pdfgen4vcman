@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:22-alpine3.20
 
 # Update packages of the base image,
 # install essential packages (including Chromium),
@@ -7,6 +7,9 @@ RUN apk update \
   && apk add --no-cache \
     ca-certificates \
     tzdata \
+    # Chromium version must be supported by the given Puppeteer version.
+    # https://pptr.dev/supported-browsers
+    # We ensure this by fixing the base image (Alpine release version).
     chromium \
     ttf-freefont \
   && update-ca-certificates
