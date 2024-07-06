@@ -37,7 +37,7 @@ const __dirname = dirname(__filename);
 // (see description at the end of this file or by using the "--help" commandline option)
 const DEFAULT_TIMEOUT = 60000;
 const DEFAULT_IDLE_CONCURRENCY = 2;
-const DEFAULT_RETRIES = 0;
+const DEFAULT_RETRIES = 5;
 const DEFAULT_PDF_TIMEOUT = 60000;
 const DEFAULT_TOC_LIMIT = 0;
 const DEFAULT_WAIT_TIME = 0;
@@ -93,15 +93,13 @@ function cleanup(options, userDirectory, pdfDirectory) {
 }
 
 async function main(proc, url, options, command) {
-  // this a merge of the simple and prettyPrint builtin formats
-  // and added a timestamp to the beginning of the message
+  // This a merge of the `simple` and `prettyPrint` builtin formats
+  // and I've added a timestamp to the beginning of the message too.
   const mySimpleLoggerFormat = format((info) => {
     // info[{LEVEL, MESSAGE, SPLAT}] are enumerable here. Since they
-    // are internal, we remove them before util.inspect so they
-    // are not printed.
+    // are internal, we remove them before calling util.inspect()
+    // so they are not printed.
     const stripped = Object.assign({}, info);
-    // Remark (indexzero): update this technique in April 2019
-    // when node@6 is EOL
     delete stripped[LEVEL];
     delete stripped[MESSAGE];
     delete stripped[SPLAT];
@@ -124,6 +122,9 @@ async function main(proc, url, options, command) {
   
     return info;
   });
+  // Note: we purposefully don't trust handleExceptions and handleRejections
+  // on Winston's transport, because we want to do some cleanup.
+  // See the uncaughtException and unhandledRejection handlers later on.
   logger.configure({
     level: options.logLevel,
     format: format.combine( format.splat(), format.colorize(), mySimpleLoggerFormat() ),
@@ -172,8 +173,13 @@ async function main(proc, url, options, command) {
     }
   }
 
-  proc.on("uncaughtExceptionMonitor", async (err, origin) => {
-    logger.verbose("main(): uncaughtExceptionMonitor, ", { origin: origin, error: err });
+  proc.on("uncaughtException", (err, origin) => {
+    logger.verbose("main(): uncaughtException, ", { origin: origin, error: err });
+    cleanup(options, userDirectory, pdfDirectory);
+    proc.exit(1);
+  });
+  proc.on("unhandledRejection", (reason, promise) => {
+    logger.verbose("main(): unhandledRejection, ", { reason: reason, promise: promise });
     cleanup(options, userDirectory, pdfDirectory);
     proc.exit(1);
   });
@@ -208,9 +214,15 @@ async function main(proc, url, options, command) {
   let pageUrls = undefined;
   if (options.toc === true) {
     logger.info("main(): generating the ToC page");
-    pageUrls = await generatePdfs(puppeteer, [ url ], userDirectory, pdfDirectory, pdfDoc, options, true);
+    try {
+      pageUrls = await generatePdfs(puppeteer, [ url ], userDirectory, pdfDirectory, pdfDoc, options, true).catch(e => {
+        logger.error("main(): PDF generation for ToC page failed with a rejection: ", e);
+      });
+    } catch (err) {
+      logger.error("main(): PDF generation for ToC page failed with an error: ", err);
+    }
     logger.info(`main(): number of page URLs in ToC: ${pageUrls ? pageUrls.length : 0}`);
-    if (options.tocLimit > 0) {
+    if (options.tocLimit > 0 && pageUrls && pageUrls.length > 0) {
       pageUrls = pageUrls.slice(0, options.tocLimit);
     }
   } else {
@@ -219,12 +231,23 @@ async function main(proc, url, options, command) {
   }
 
   logger.info(`main(): number of page URLs to be processed: ${pageUrls ? pageUrls.length : 0}`);
+  let pdfGenerationResult = true;
   if (pageUrls && pageUrls.length > 0) {
-    await generatePdfs(puppeteer, pageUrls, userDirectory, pdfDirectory, pdfDoc, options, false);
+    try {
+      await generatePdfs(puppeteer, pageUrls, userDirectory, pdfDirectory, pdfDoc, options, false).catch((e) => {
+        pdfGenerationResult = false;
+        logger.error("main(): PDF generation for page URLs failed with a reject: ", e);
+      });
+    } catch (err) {
+      pdfGenerationResult = false;
+      logger.error("main(): PDF generation for page URLs failed with an error: ", err);
+    }
   }
 
-  const pdfBytes = await pdfDoc.save();
-  await writeFile(outputfile, pdfBytes);
+  if (pdfGenerationResult) {
+    const pdfBytes = await pdfDoc.save();
+    await writeFile(outputfile, pdfBytes);
+  }
 
   cleanup(options, userDirectory, pdfDirectory);
   

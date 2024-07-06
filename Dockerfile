@@ -20,7 +20,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD="true" \
 
 COPY ./bin/ /app/bin/
 COPY ./lib/ /app/lib/
-COPY ./index.js ./package*.json ./README.md /app/
+COPY ./index.js ./package*.json ./README.md ./LICENSE /app/
 
 # Create user, set owner and permissions
 RUN adduser -D -g "" appuser \
@@ -34,11 +34,13 @@ RUN adduser -D -g "" appuser \
 RUN rm -rf /var/cache/apk/* \
   /root/.node-gyp \
   /usr/share/man \
-  /home/appuser/.npm \
   /tmp/*
 
 USER appuser
-RUN cd /app && npm install
+RUN cd /app \
+  && npm install \
+  && rm -rf /home/appuser/.npm
+
 WORKDIR /work
 ENTRYPOINT [ "/app/bin/pdfgen4vcman-cli.js", "--browser-long-option", "no-sandbox" ]
 CMD [ "--help" ]

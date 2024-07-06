@@ -13,7 +13,7 @@ It:
 
 All development and testing was done solely on Linux (Ubuntu) so on any other platform YMMV.
 
-If you encounter a bug, open a GH issue. If you have an idea for a fix, pull requests are welcome.
+If think you encounter a bug, run the application again with `debug` log level and see if there's a plausible explanation for the issue. If you've confirmed that the problem is in `pdfgen4vcman`, open a GH issue. If you have an idea for a fix, pull requests are welcome.
 
 This application is strictly a hobby project (I maintain it in my free time), thus I don't make any promises on deadlines for bugfixes, new features, review of GH issues and PRs.
 
@@ -61,6 +61,12 @@ pdfgen4vcman [options...] "<volvocars_user_manual_url>"
 ## Advanced usage
 
 Use the `--help` option to print a description of the supported commandline options.
+
+## Logging
+
+`pdfgen4vcman` uses extensive logging, but the default log level (`info`) ensures that only minimal progress information is produced.
+
+You can increase the log level to `verbose` (using the `--log-level` option) to look under the hood and increase it to `debug` to get a detailed log of every HTTP request that goes out from the browser to any servers during the download of the online manual.
 
 ## Volvocars.com vs. scraping
 
