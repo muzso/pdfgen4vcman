@@ -1,3 +1,6 @@
+# Generated PDFs
+*.pdf
+
 # Logs
 logs
 *.log
