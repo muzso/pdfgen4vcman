@@ -2,7 +2,7 @@
 
 This is an unofficial PDF generator for online user manuals at volvocars.com.
 
-It:
+What it does:
 
 - collects all user manual page URLs from the table-of-contents page
 - applies a couple of optimizations for each page to make PDF generation more practical (e.g. removal of page header and footer)
@@ -11,13 +11,17 @@ It:
 
 ## Disclaimer
 
-All development and testing was done solely on Linux (Ubuntu) so on any other platform YMMV.
+All development and testing was done solely on Linux (Ubuntu) so on any other platform ymmv.
 
-If think you encounter a bug, run the application again with `debug` log level and see if there's a plausible explanation for the issue. If you've confirmed that the problem is in `pdfgen4vcman`, open a GH issue. If you have an idea for a fix, pull requests are welcome.
+If you think you have encountered a bug, run the application again with `debug` log level and see if there's a plausible explanation (i.e. not a bug, but an issue with volvocars.com) for the issue. If you've confirmed that the problem is in `pdfgen4vcman`, open a GH issue. If you have an idea for a fix, pull requests are welcome.
 
-This application is strictly a hobby project (I maintain it in my free time), thus I don't make any promises on deadlines for bugfixes, new features, review of GH issues and PRs.
+This is a hobby project, thus I don't make any promises on deadlines for bugfixes, new features, review of GH issues and PRs.
 
-Moreover I don't take any responsibility if it malfunctions in any way. Obviously the goal is that it acts as advertised, but you may never know what can lead to your computer catching fire. You have been warned. ;)
+I don't take any responsibility if it malfunctions in any way. Obviously the goal is that it acts as advertised, but you may never know what can lead to your computer catching fire. You have been warned. ;)
+
+I've no affiliation with [Volvo](https://www.volvo.com/) whatsoever, `VolvoCars` and the `volvocars.com` domain are Volvo's trademarks.
+
+You can use, modify and share this software according to its license policy (see the accompanying LICENSE file).
 
 ## Quick start
 
