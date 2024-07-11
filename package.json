@@ -1,6 +1,6 @@
 {
   "name": "pdfgen4vcman",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "unofficial PDF generator for online user manuals at volvocars.com",
   "files": [
     "bin/",
@@ -16,7 +16,15 @@
     "volvocars"
   ],
   "author": "Zsolt Müller <zsolt.muller@gmail.com>",
+  "homepage": "https://github.com/muzso/pdfgen4vcman",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muzso/pdfgen4vcman.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muzso/pdfgen4vcman/issues"
+  },
   "main": "./index.js",
   "type": "module",
   "bin": {
