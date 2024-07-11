@@ -3,6 +3,7 @@
 // Node.js builtin packages
 import { access, mkdtemp, writeFile } from "node:fs/promises";
 import { accessSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join, parse } from "node:path";
 import { tmpdir } from "node:os";
 import { createInterface } from "node:readline";
@@ -38,7 +39,9 @@ const __dirname = dirname(__filename);
 const DEFAULT_TIMEOUT = 60000;
 const DEFAULT_IDLE_CONCURRENCY = 2;
 const DEFAULT_RETRIES = 5;
+const DEFAULT_PROXIES = [];
 const DEFAULT_PDF_TIMEOUT = 60000;
+const DEFAULT_PDF_CLEANUP_THRESHOLD = 0.008;
 const DEFAULT_TOC_LIMIT = 0;
 const DEFAULT_WAIT_TIME = 0;
 const DEFAULT_FILENAME = "manual.pdf";
@@ -53,6 +56,14 @@ const DEFAULT_PAGE_SIZE = "A4";
 const DEFAULT_LENIENCY = 0;
 const DEFAULT_URL_DOMAINS = [ ".volvocars.com" ];
 const DEFAULT_NEW_BROWSER_PER_URLS = 100;
+// the defaults for "--browser-long-option" come from here:
+// - https://www.browserless.io/blog/puppeteer-print
+// - https://github.com/puppeteer/puppeteer/issues/2410
+const DEFAULT_BROWSER_LONG_OPTIONS = [ "--font-render-hinting=none", "--force-color-profile=generic-rgb" ];
+const DEFAULT_BROWSER_SHORT_OPTIONS = [];
+const DEFAULT_GHOSTSCRIPT_PATH = "gs";
+const DEFAULT_PDF_TOP_BOTTOM_MARGIN = 50;
+const DEFAULT_PDF_LEFT_RIGHT_MARGIN = 0;
 
 // return the current date & time in "YYYY-MM-DD HH:MI:SS" format (in GMT timezone)
 function getFormattedTimestamp() {
@@ -92,6 +103,16 @@ function cleanup(options, userDirectory, pdfDirectory) {
   }
 }
 
+function buffer2string(input) {
+  let ret;
+  if (input !== null && input.constructor && input.constructor.name && input.constructor.name.toLowerCase() == "buffer") {
+    ret = input.toString();
+  } else {
+    ret = input;
+  }
+  return ret;
+}
+
 async function main(proc, url, options, command) {
   // This a merge of the `simple` and `prettyPrint` builtin formats
   // and I've added a timestamp to the beginning of the message too.
@@ -105,7 +126,7 @@ async function main(proc, url, options, command) {
     delete stripped[SPLAT];
     delete stripped["level"];
     delete stripped["message"];
-
+    
     const stringifiedRest = inspect(stripped, {
       depth: Infinity,
       colors: true,
@@ -247,6 +268,102 @@ async function main(proc, url, options, command) {
   if (pdfGenerationResult) {
     const pdfBytes = await pdfDoc.save();
     await writeFile(outputfile, pdfBytes);
+    logger.info(`main(): saved combined PDF to "${outputfile}"`);
+
+    if (proc.platform == "linux" && options.pdfCleanup) {
+      logger.info("main(): cleaning up empty pages");
+      // https://ghostscript.readthedocs.io/en/latest/Devices.html#ink-coverage-output
+      // Ghostscript ink coverage output.
+      // The inkcov device considers each rendered pixel and whether it marks
+      // the C, M, Y or K channels. So the percentages are a measure of how many
+      // device pixels contain that ink.
+      const cmd = options.ghostscriptPath;
+      const cmdArgs = [ "-q", "-o", "-", "-sDEVICE=inkcov", outputfile ];
+      logger.verbose(`main(): executing command: "${cmd} ${cmdArgs.join(" ")}"`);
+      const spawnResult = spawnSync(cmd, cmdArgs, {
+        stdio: "pipe"
+      });
+      if (spawnResult) {
+        if (spawnResult.stdout) {
+          spawnResult.stdout = buffer2string(spawnResult.stdout);
+        }
+        if (spawnResult.stderr) {
+          spawnResult.stderr = buffer2string(spawnResult.stderr);
+        }
+        if (spawnResult.output) {
+          spawnResult.output = spawnResult.output.map((x) => buffer2string(x));
+        }
+        if (spawnResult.status == 0 && typeof spawnResult.error == "undefined") {
+          if (spawnResult.stdout) {
+            logger.debug("main(): execution result: ", spawnResult);
+            const lines = spawnResult.stdout
+              .replaceAll(/^\s+/mg, "")
+              .split(/[\r\n]+/)
+            ;
+            let removedPageCount = 0;
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.length > 0) {
+                const fields = line.split(/\s+/);
+                if (fields.length >= 4) {
+                  let sum = 0;
+                  for (let k = 0; k < 4; k++) {
+                    const val = parseFloat(fields[k]);
+                    if (!isNaN(val)) {
+                      sum += val;
+                    } else {
+                      logger.error(`main(): in GS's output in line #${i} the field #${k} is not a number: "${line}"`);
+                      sum = -1;
+                      break;
+                    }
+                  }
+                  if (sum >= 0 && sum < options.pdfCleanupThreshold) {
+                    logger.verbose(`main(): removing page #${i} from the output (ink coverage sum: ${sum})`);
+                    pdfDoc.removePage(i - removedPageCount);
+                    removedPageCount++;
+                  } else {
+                    logger.debug(`main(): page #${i} ink coverage sum: ${sum}`);
+                  }
+                } else {
+                  logger.debug(`main(): line #${i} in GS output doesn't have 4 or more fields`);
+                }
+              } else {
+                logger.debug(`main(): line #${i} in GS output is empty`);
+              }
+            };
+            logger.debug(`main(): removed ${removedPageCount} pages`);
+            if (removedPageCount > 0) {
+              const pdfBytes = await pdfDoc.save();
+              await writeFile(outputfile, pdfBytes);
+              logger.info(`main(): updated "${outputfile}" with ${removedPageCount} empty pages removed`);
+            }
+          } else {
+            logger.error("main(): executing Ghostscript failed, spawnSync() returned a result with empty stdout (this should not be possible)");
+            logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
+          }
+        } else {
+          logger.error(`main(): executing Ghostscript failed: exit status = ${spawnResult.status}`);
+          if (spawnResult.error) {
+            logger.error(`main(): error code = ${spawnResult.error.code}, error message = "${spawnResult.error.message}"`);
+            if (spawnResult.error.code == "ENOENT") {
+              logger.error(`main(): ${spawnResult.error.code} means that the file at the "${cmd}" path was not found on the PATH or it could not be executed`);
+              logger.info("main(): you can specify a different path for Ghostscript by using the \"--ghostscript-path\" option or disable use of Ghostscript to remove empty pages by using the \"--no-pdf-cleanup\" option");
+            }
+          }
+          if (spawnResult.stdout && spawnResult.stdout.length > 0) {
+            logger.error(`main(): stdout = ${spawnResult.stdout}`);
+          }
+          if (spawnResult.stderr && spawnResult.stderr.length > 0) {
+            logger.error(`main(): stderr = ${spawnResult.stderr}`);
+          }
+          logger.info("main(): check \"https://nodejs.org/api/errors.html\" for description of error codes/messages that are not trivial (and/or set log level to \"verbose\" or higher to get more details on the error");
+          logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
+        }
+      } else {
+        logger.error("main(): executing Ghostscript failed, spawnSync() returned empty result (this should not be possible)");
+        logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs } );
+      }
+    }
   }
 
   cleanup(options, userDirectory, pdfDirectory);
@@ -289,10 +406,10 @@ export default async function cli(proc) {
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
     .option("-u, --url-domain-suffix <suffix1,suffix2,...>", "comma-separated list of domain suffixes used for filtering URLs for PDF generation", commaSeparatedList, DEFAULT_URL_DOMAINS)
     .option("-o, --output <filepath>", "path of the PDF file to be written")
-    .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, [])
+    .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, DEFAULT_PROXIES)
     .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser", DEFAULT_USER_AGENT)
-    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name)", (value, previous) => { return optParser("--", value, previous); }, [])
-    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name)", (value, previous) => { return optParser("-", value, previous); }, [])
+    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name)", (value, previous) => { return optParser("--", value, previous); }, DEFAULT_BROWSER_LONG_OPTIONS)
+    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name)", (value, previous) => { return optParser("-", value, previous); }, DEFAULT_BROWSER_SHORT_OPTIONS)
     .option("-t, --timeout <milliseconds>", "network timeout used for HTTP requests by the browser", intParser, DEFAULT_TIMEOUT)
     .option("-n, --no-toc", "do not treat the URL argument as a table-of-contents, i.e. do not generate PDFs for each link found on the page")
     .option("--toc-limit <limit>", "number of pages to process in the table-of-contents", intParser, DEFAULT_TOC_LIMIT)
@@ -304,6 +421,14 @@ export default async function cli(proc) {
     .option("-m, --http-error-domain-suffixes <suffix1,suffix2,...>", "comma-separated list of domain suffixes to watch HTTP errors for", commaSeparatedList, DEFAULT_HTTP_ERROR_DOMAINS)
     .option("-d, --user-dir <path>", "path to a directory where the Chromium user profile (with cookies, cache) will be stored and kept even when the execution stops. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("-f, --pdf-dir <path>", "path to a directory where the intermediary PDFs are stored and kept (even when the execution stops) and looked for. This option allows to continue an interrupted PDF generation process. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
+    .option("--no-pdf-cleanup", "disables removal of empty pages (on Linux)")
+    .option("--pdf-cleanup-threshold", "adjusts the \"empty page detector\" threshold (based on inkcov output of Ghostscript)", parseFloat, DEFAULT_PDF_CLEANUP_THRESHOLD)
+    .option("--ghostscript-path", "path to the Ghostscript executable (used for detection of empty pages)", DEFAULT_GHOSTSCRIPT_PATH)
+    .option("--pdf-omit-background", "set \"omitBackground\" to true during PDF generation")
+    .option("--no-pdf-print-background", "set \"printBackground\" to false during PDF generation")
+    .option("--pdf-top-bottom-margin", "set the top and bottom margins for PDF generation", intParser, DEFAULT_PDF_TOP_BOTTOM_MARGIN)
+    .option("--pdf-left-right-margin", "set the left and right margins for PDF generation", intParser, DEFAULT_PDF_LEFT_RIGHT_MARGIN)
+    .option("--pdf-display-header-footer", "display the page header and footer during PDF generation")
     .option("--force", "render pages and save them as PDF even if a PDF for the given URL already exists in the \"--pdf-dir\" directory")
     .option("-w, --wait-time <seconds>", "number of seconds to wait if we've tried all proxies and all resulted in HTTP errors and/or throttling", DEFAULT_WAIT_TIME)
     .option("--pdf-timeout <milliseconds>", "PDF generation timeout", DEFAULT_PDF_TIMEOUT)

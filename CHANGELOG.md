@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2024-07-11
+
+### Added
+
+- empty pages are now automatically detected and removed from the combined PDF using Ghostscript's ink coverage output device
+- Docker: added Ghostscript for empty page detection and a number of fonts and related packages for better font and Unicode characterset coverage (e.g. Japanese characters were not rendered)
+- added documentation of the new empty page detection and removal feature
+- added new options to control Puppeteer PDF generation parameters
+- added `--font-render-hinting=none` and `--force-color-profile=generic-rgb` as default Chrome cmdline options
+
+### Changed
+
+- PDF generation's `printBackground` default value is now `true`
+- PDF generation's `omitBackground` default value is now `false`
+
 ## [1.0.1] - 2024-07-07
 
 ### Added

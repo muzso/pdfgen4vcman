@@ -119,16 +119,10 @@ pdfgen4vcman --http-errors "$(seq -s "," 400 499 | sed -r "s#(,40[1347]),#,#g"),
 
 This will ignore HTTP 403 errors from volvocars.com, but still consider a bunch of 4xx status codes and all 5xx status codes to be errors (in which case the page loading should be retried).
 
-## Removing empty pages
+## Removing (mostly) empty pages
 
-For some reason a couple URLs in the user manuals result in an empty last page in the generated PDF. This is probably due to something invisible extending the "content" part of the page. In other cases there's a single horizontal line on the top of the last page of the PDF, but I consider these to be "empty" as well.
+For some reason a couple URLs in the user manuals result in an empty (or mostly empty) last page in the generated PDF. This is probably due to something invisible extending the "content" part (i.e. the DOM) of the page. In other cases there's a single horizontal line on the top of the last page, but I consider these to be "empty" as well.
 
-You can remove these empty pages from the final PDF with the following command. It works for my use-case, but you might have to fine-tune the value of `sensitivity`.
+`pdfgen4vcman` contains support for automatic detection and removal of these pages by using Ghostscript's [ink coverage](https://ghostscript.readthedocs.io/en/latest/Devices.html#ink-coverage-output) output. You can disable or finetune this post-processing using commandline options.
 
-You'll need both the `pdftk` and the `gs` (i.e. Ghostscript) utilities.
-
-```bash
-filename="manual.pdf"
-
-pdftk "$filename" cat $(gs -q -o - -sDEVICE=inkcov "$filename" | awk -v sensitivity=0.008 '$1 + $2 + $3 + $4 >= sensitivity { printf("%d ", NR) }') output manual_wo_empty_pages.pdf
-```
+The Ghostscript executable is searched for using the standard `gs` name, but this can be customized via an option.

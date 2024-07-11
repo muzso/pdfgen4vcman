@@ -7,12 +7,23 @@ RUN apk update \
   && apk add --no-cache \
     ca-certificates \
     tzdata \
+    ghostscript \
     # Chromium version must be supported by the given Puppeteer version.
     # https://pptr.dev/supported-browsers
     # We ensure this by fixing the base image (Alpine release version).
     chromium \
-    ttf-freefont \
-  && update-ca-certificates
+    freetype \
+    harfbuzz \
+    msttcorefonts-installer \
+    font-carlito \
+    font-noto-cjk \
+    font-noto-cjk-extra \
+    font-tlwg \
+    font-liberation \
+    font-liberation-sans-narrow \
+    font-roboto \
+  && update-ca-certificates \
+  && update-ms-fonts
 
 # Puppeteer downloaded Chromium will not work on Alpine.
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD="true" \
