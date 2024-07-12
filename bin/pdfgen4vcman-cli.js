@@ -227,8 +227,13 @@ async function main(proc, url, options, command) {
     proc.exit(1);
   }
 
-  const parsedPath = parse(options.output ? options.output : DEFAULT_FILENAME);
-  const outputfile = join(parsedPath.dir, parsedPath.name + "_" + options.timestamp.replaceAll(/[:]/g, "-").replaceAll(/[ /\\]+/g, "_") + parsedPath.ext);
+  let outputfile = "";
+  if (options.output && options.output.length > 0) {
+    outputfile = options.output;
+  } else {
+    const parsedPath = parse(DEFAULT_FILENAME);
+    outputfile = join(parsedPath.dir, parsedPath.name + "_" + options.timestamp.replaceAll(/[:]/g, "-").replaceAll(/[ /\\]+/g, "_") + parsedPath.ext);
+  }
 
   const pdfDoc = await PDFDocument.create();
 
