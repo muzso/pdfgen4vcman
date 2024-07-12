@@ -50,8 +50,9 @@ RUN rm -rf /var/cache/apk/* \
 USER appuser
 RUN cd /app \
   && npm install \
+  && chmod -R a+rX /app \
   && rm -rf /home/appuser/.npm
 
 WORKDIR /work
-ENTRYPOINT [ "/app/bin/pdfgen4vcman-cli.js", "--browser-long-option", "no-sandbox" ]
+ENTRYPOINT [ "/app/bin/entrypoint.sh", "/app/bin/pdfgen4vcman-cli.js", "--browser-long-option", "no-sandbox" ]
 CMD [ "--help" ]

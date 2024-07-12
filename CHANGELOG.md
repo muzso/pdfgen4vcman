@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2024-07-12
+
+### Fixed
+
+- added a shell script wrapper (entrypoint.sh) around pdfgen4vcman-cli.js to create a HOME directory and set the env on startup so the image can truely be run with any UID (as intended)
+- improved error handling so no PDF is saved in the /work directory if an error occured during PDF generation
+- PDF is not saved if no pages have been added
+- fixed a log message (it contained a mistaken function name)
+
 ## [1.0.3] - 2024-07-11
 
 ### Added

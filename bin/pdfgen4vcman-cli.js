@@ -252,8 +252,8 @@ async function main(proc, url, options, command) {
   }
 
   logger.info(`main(): number of page URLs to be processed: ${pageUrls ? pageUrls.length : 0}`);
-  let pdfGenerationResult = true;
   if (pageUrls && pageUrls.length > 0) {
+    let pdfGenerationResult = true;
     try {
       await generatePdfs(puppeteer, pageUrls, userDirectory, pdfDirectory, pdfDoc, options, false).catch((e) => {
         pdfGenerationResult = false;
@@ -263,105 +263,109 @@ async function main(proc, url, options, command) {
       pdfGenerationResult = false;
       logger.error("main(): PDF generation for page URLs failed with an error: ", err);
     }
-  }
 
-  if (pdfGenerationResult) {
-    const pdfBytes = await pdfDoc.save();
-    await writeFile(outputfile, pdfBytes);
-    logger.info(`main(): saved combined PDF to "${outputfile}"`);
+    if (pdfGenerationResult) {
+      if (pdfDoc.getPageCount() > 0) {
+        const pdfBytes = await pdfDoc.save();
+        await writeFile(outputfile, pdfBytes);
+        logger.info(`main(): saved combined PDF to "${outputfile}"`);
 
-    if (proc.platform == "linux" && options.pdfCleanup) {
-      logger.info("main(): cleaning up empty pages");
-      // https://ghostscript.readthedocs.io/en/latest/Devices.html#ink-coverage-output
-      // Ghostscript ink coverage output.
-      // The inkcov device considers each rendered pixel and whether it marks
-      // the C, M, Y or K channels. So the percentages are a measure of how many
-      // device pixels contain that ink.
-      const cmd = options.ghostscriptPath;
-      const cmdArgs = [ "-q", "-o", "-", "-sDEVICE=inkcov", outputfile ];
-      logger.verbose(`main(): executing command: "${cmd} ${cmdArgs.join(" ")}"`);
-      const spawnResult = spawnSync(cmd, cmdArgs, {
-        stdio: "pipe"
-      });
-      if (spawnResult) {
-        if (spawnResult.stdout) {
-          spawnResult.stdout = buffer2string(spawnResult.stdout);
-        }
-        if (spawnResult.stderr) {
-          spawnResult.stderr = buffer2string(spawnResult.stderr);
-        }
-        if (spawnResult.output) {
-          spawnResult.output = spawnResult.output.map((x) => buffer2string(x));
-        }
-        if (spawnResult.status == 0 && typeof spawnResult.error == "undefined") {
-          if (spawnResult.stdout) {
-            logger.debug("main(): execution result: ", spawnResult);
-            const lines = spawnResult.stdout
-              .replaceAll(/^\s+/mg, "")
-              .split(/[\r\n]+/)
-            ;
-            let removedPageCount = 0;
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i];
-              if (line.length > 0) {
-                const fields = line.split(/\s+/);
-                if (fields.length >= 4) {
-                  let sum = 0;
-                  for (let k = 0; k < 4; k++) {
-                    const val = parseFloat(fields[k]);
-                    if (!isNaN(val)) {
-                      sum += val;
+        if (proc.platform == "linux" && options.pdfCleanup) {
+          logger.info("main(): cleaning up empty pages");
+          // https://ghostscript.readthedocs.io/en/latest/Devices.html#ink-coverage-output
+          // Ghostscript ink coverage output.
+          // The inkcov device considers each rendered pixel and whether it marks
+          // the C, M, Y or K channels. So the percentages are a measure of how many
+          // device pixels contain that ink.
+          const cmd = options.ghostscriptPath;
+          const cmdArgs = [ "-q", "-o", "-", "-sDEVICE=inkcov", outputfile ];
+          logger.verbose(`main(): executing command: "${cmd} ${cmdArgs.join(" ")}"`);
+          const spawnResult = spawnSync(cmd, cmdArgs, {
+            stdio: "pipe"
+          });
+          if (spawnResult) {
+            if (spawnResult.stdout) {
+              spawnResult.stdout = buffer2string(spawnResult.stdout);
+            }
+            if (spawnResult.stderr) {
+              spawnResult.stderr = buffer2string(spawnResult.stderr);
+            }
+            if (spawnResult.output) {
+              spawnResult.output = spawnResult.output.map((x) => buffer2string(x));
+            }
+            if (spawnResult.status == 0 && typeof spawnResult.error == "undefined") {
+              if (spawnResult.stdout) {
+                logger.debug("main(): execution result: ", spawnResult);
+                const lines = spawnResult.stdout
+                  .replaceAll(/^\s+/mg, "")
+                  .split(/[\r\n]+/)
+                ;
+                let removedPageCount = 0;
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i];
+                  if (line.length > 0) {
+                    const fields = line.split(/\s+/);
+                    if (fields.length >= 4) {
+                      let sum = 0;
+                      for (let k = 0; k < 4; k++) {
+                        const val = parseFloat(fields[k]);
+                        if (!isNaN(val)) {
+                          sum += val;
+                        } else {
+                          logger.error(`main(): in GS's output in line #${i} the field #${k} is not a number: "${line}"`);
+                          sum = -1;
+                          break;
+                        }
+                      }
+                      if (sum >= 0 && sum < options.pdfCleanupThreshold) {
+                        logger.verbose(`main(): removing page #${i} from the output (ink coverage sum: ${sum})`);
+                        pdfDoc.removePage(i - removedPageCount);
+                        removedPageCount++;
+                      } else {
+                        logger.debug(`main(): page #${i} ink coverage sum: ${sum}`);
+                      }
                     } else {
-                      logger.error(`main(): in GS's output in line #${i} the field #${k} is not a number: "${line}"`);
-                      sum = -1;
-                      break;
+                      logger.debug(`main(): line #${i} in GS output doesn't have 4 or more fields`);
                     }
-                  }
-                  if (sum >= 0 && sum < options.pdfCleanupThreshold) {
-                    logger.verbose(`main(): removing page #${i} from the output (ink coverage sum: ${sum})`);
-                    pdfDoc.removePage(i - removedPageCount);
-                    removedPageCount++;
                   } else {
-                    logger.debug(`main(): page #${i} ink coverage sum: ${sum}`);
+                    logger.debug(`main(): line #${i} in GS output is empty`);
                   }
-                } else {
-                  logger.debug(`main(): line #${i} in GS output doesn't have 4 or more fields`);
+                };
+                logger.debug(`main(): removed ${removedPageCount} pages`);
+                if (removedPageCount > 0) {
+                  const pdfBytes = await pdfDoc.save();
+                  await writeFile(outputfile, pdfBytes);
+                  logger.info(`main(): updated "${outputfile}" with ${removedPageCount} empty pages removed`);
                 }
               } else {
-                logger.debug(`main(): line #${i} in GS output is empty`);
+                logger.error("main(): executing Ghostscript failed, spawnSync() returned a result with empty stdout (this should not be possible)");
+                logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
               }
-            };
-            logger.debug(`main(): removed ${removedPageCount} pages`);
-            if (removedPageCount > 0) {
-              const pdfBytes = await pdfDoc.save();
-              await writeFile(outputfile, pdfBytes);
-              logger.info(`main(): updated "${outputfile}" with ${removedPageCount} empty pages removed`);
+            } else {
+              logger.error(`main(): executing Ghostscript failed: exit status = ${spawnResult.status}`);
+              if (spawnResult.error) {
+                logger.error(`main(): error code = ${spawnResult.error.code}, error message = "${spawnResult.error.message}"`);
+                if (spawnResult.error.code == "ENOENT") {
+                  logger.error(`main(): ${spawnResult.error.code} means that the file at the "${cmd}" path was not found on the PATH or it could not be executed`);
+                  logger.info("main(): you can specify a different path for Ghostscript by using the \"--ghostscript-path\" option or disable use of Ghostscript to remove empty pages by using the \"--no-pdf-cleanup\" option");
+                }
+              }
+              if (spawnResult.stdout && spawnResult.stdout.length > 0) {
+                logger.error(`main(): stdout = ${spawnResult.stdout}`);
+              }
+              if (spawnResult.stderr && spawnResult.stderr.length > 0) {
+                logger.error(`main(): stderr = ${spawnResult.stderr}`);
+              }
+              logger.info("main(): check \"https://nodejs.org/api/errors.html\" for description of error codes/messages that are not trivial (and/or set log level to \"verbose\" or higher to get more details on the error");
+              logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
             }
           } else {
-            logger.error("main(): executing Ghostscript failed, spawnSync() returned a result with empty stdout (this should not be possible)");
-            logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
+            logger.error("main(): executing Ghostscript failed, spawnSync() returned empty result (this should not be possible)");
+            logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs } );
           }
-        } else {
-          logger.error(`main(): executing Ghostscript failed: exit status = ${spawnResult.status}`);
-          if (spawnResult.error) {
-            logger.error(`main(): error code = ${spawnResult.error.code}, error message = "${spawnResult.error.message}"`);
-            if (spawnResult.error.code == "ENOENT") {
-              logger.error(`main(): ${spawnResult.error.code} means that the file at the "${cmd}" path was not found on the PATH or it could not be executed`);
-              logger.info("main(): you can specify a different path for Ghostscript by using the \"--ghostscript-path\" option or disable use of Ghostscript to remove empty pages by using the \"--no-pdf-cleanup\" option");
-            }
-          }
-          if (spawnResult.stdout && spawnResult.stdout.length > 0) {
-            logger.error(`main(): stdout = ${spawnResult.stdout}`);
-          }
-          if (spawnResult.stderr && spawnResult.stderr.length > 0) {
-            logger.error(`main(): stderr = ${spawnResult.stderr}`);
-          }
-          logger.info("main(): check \"https://nodejs.org/api/errors.html\" for description of error codes/messages that are not trivial (and/or set log level to \"verbose\" or higher to get more details on the error");
-          logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
         }
       } else {
-        logger.error("main(): executing Ghostscript failed, spawnSync() returned empty result (this should not be possible)");
-        logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs } );
+        logger.error("main(): no pages were produced in the combined PDF");
       }
     }
   }
