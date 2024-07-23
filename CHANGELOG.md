@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2024-07-23
+
+### Added
+
+- HTTP status error codes (i.e. the status codes that we handle as errors and retry the given page) can now be separately specified for the page URL and its resource URLs (i.e. the URLs that are loaded while the page is being rendered). Previously the default set of HTTP status error codes didn't contain 404, because it's usually not a transient error and a retry shouldn't fix it. But in case of page URLs (especially on volvocars.com) this can be a sign of a transient error and now we retry that page instead of simply saving as PDF.
+
+### Changed
+
+- improved a bit on logging (added HTTP status codes where they were not logged before)
+
 ## [1.0.6] - 2024-07-12
 
 ### Changed

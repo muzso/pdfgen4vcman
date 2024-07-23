@@ -47,9 +47,11 @@ const DEFAULT_WAIT_TIME = 0;
 const DEFAULT_FILENAME = "manual.pdf";
 const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const DEFAULT_LOG_LEVEL = "info";
-const HTTP_4xx_RETRY_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 400).filter((x) => ![ 401, 404, 407 ].includes(x))
-const HTTP_5xx_RETRY_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 500)
-const HTTP_RETRY_STATUS_CODES = HTTP_4xx_RETRY_STATUS_CODES.concat(HTTP_5xx_RETRY_STATUS_CODES);
+const DEFAULT_RESOURCE_HTTP_4xx_RETRY_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 400).filter((x) => ![ 401, 404, 407 ].includes(x))
+const HTTP_4xx_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 400)
+const HTTP_5xx_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 500)
+const DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES = DEFAULT_RESOURCE_HTTP_4xx_RETRY_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
+const DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES = HTTP_4xx_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
 const DEFAULT_HTTP_ERROR_DOMAINS = [ ".volvocars.com" ];
 const PAGE_SIZES = Object.keys(PageSizes);
 const DEFAULT_PAGE_SIZE = "A4";
@@ -426,8 +428,9 @@ export default async function cli(proc) {
     .option("-i, --insecure", "ignore SSL/TLS errors")
     .option("-l, --links", "include the \"Related documents\" and \"More in this topic\" sections in the generated content pages")
     .option("-r, --retries <number>", "number of retries to load a page without any errors", intParser, DEFAULT_RETRIES)
-    .option("-e, --http-errors <statuscode1,statuscode2,...>", "comma-separated list of HTTP statuscodes that if received from a domain in the \"--domain\" list, triggers a retry for the given page", commaSeparatedIntList, [])
-    .option("-m, --http-error-domain-suffixes <suffix1,suffix2,...>", "comma-separated list of domain suffixes to watch HTTP errors for", commaSeparatedList, DEFAULT_HTTP_ERROR_DOMAINS)
+    .option("-e, --page-http-errors <statuscode1,statuscode2,...>", "comma-separated list of HTTP statuscodes that if received from a page URL, triggers a retry for the given page", commaSeparatedIntList, [])
+    .option("--resource-http-errors <statuscode1,statuscode2,...>", "comma-separated list of HTTP statuscodes that if received from a domain in the \"--domain\" list while loading a resource for a page, triggers a retry for the given page", commaSeparatedIntList, [])
+    .option("--resource-http-error-domain-suffixes <suffix1,suffix2,...>", "comma-separated list of domain suffixes to watch resource HTTP errors for", commaSeparatedList, DEFAULT_HTTP_ERROR_DOMAINS)
     .option("-d, --user-dir <path>", "path to a directory where the Chromium user profile (with cookies, cache) will be stored and kept even when the execution stops. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("-f, --pdf-dir <path>", "path to a directory where the intermediary PDFs are stored and kept (even when the execution stops) and looked for. This option allows to continue an interrupted PDF generation process. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("--no-pdf-cleanup", "disables removal of empty pages (on Linux)")
@@ -448,8 +451,11 @@ export default async function cli(proc) {
     .addOption(new Option("--pdf-page-size <size>", "the page format/size for the PDF (as per puppeteer's API)").choices(PAGE_SIZES).default(DEFAULT_PAGE_SIZE))
     .addOption(new Option("--idle-concurrency <number>", "maximum number concurrent of network connections to be considered inactive").argParser(intParser).default(DEFAULT_IDLE_CONCURRENCY).hideHelp())
     .action(async(url, options, command) => {
-      if (options.httpErrors.length == 0) {
-        options.httpErrors = HTTP_RETRY_STATUS_CODES;
+      if (options.pageHttpErrors.length == 0) {
+        options.pageHttpErrors = DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES;
+      }
+      if (options.resourceHttpErrors.length == 0) {
+        options.resourceHttpErrors = DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES;
       }
       await main(proc, url, options, command);
     });
