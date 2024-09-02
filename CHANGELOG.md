@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2024-09-02
+
+### Added
+
+- the browser's version string is logged on verbose level
+
+### Changed
+
+- a couple of commandline option arguments accepted a comma-separated argument list, these have no been modified so that the option itself can be used multiple times and the arguments are collected into a list (these options are: `--url-domain-suffix`, `--page-http-errors`, `--resource-http-errors`, `--resource-http-error-domain-suffixes`)
+- all calls to document.querySelector() have been changed into document.querySelectorAll(), because it is more robust
+
+### Fixed
+
+- `--browser-long-option` and `--browser-short-option` option arguments were not parsed correctly and default value was not shown in the format that is expected for the option's argument
+- Volvo added a new nagging popup which must be handled as well (besides the cookie consent popup).
+
 ## [1.0.7] - 2024-07-23
 
 ### Added

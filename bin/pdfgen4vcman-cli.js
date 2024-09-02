@@ -61,7 +61,7 @@ const DEFAULT_NEW_BROWSER_PER_URLS = 100;
 // the defaults for "--browser-long-option" come from here:
 // - https://www.browserless.io/blog/puppeteer-print
 // - https://github.com/puppeteer/puppeteer/issues/2410
-const DEFAULT_BROWSER_LONG_OPTIONS = [ "--font-render-hinting=none", "--force-color-profile=generic-rgb" ];
+const DEFAULT_BROWSER_LONG_OPTIONS = [ "font-render-hinting,none", "force-color-profile,generic-rgb" ];
 const DEFAULT_BROWSER_SHORT_OPTIONS = [];
 const DEFAULT_GHOSTSCRIPT_PATH = "gs";
 const DEFAULT_PDF_TOP_BOTTOM_MARGIN = 50;
@@ -387,24 +387,6 @@ export default async function cli(proc) {
   const collect = (value, previous)  => {
     return previous.concat( [ value ] );
   };
-  const commaSeparatedList = (value, dummyPrevious) => {
-    return value.split(",").filter((x) => x.length > 0);
-  };
-  const commaSeparatedIntList = (value, dummyPrevious) => {
-    const parsedArray = value.split(",").filter((x) => x.length > 0).map((x) => parseInt(x, 10));
-    if (parsedArray.some((x) => isNaN(x))) {
-      throw new commander.InvalidArgumentError(`"${value}" was parsed as a comma-separated list and one of its elements is not a number.`);
-    }
-    return parsedArray;
-  };
-  const optParser = (prefix, value, previous) => {
-    const idx = value.indexOf(",");
-    if (idx >= 0) {
-      return previous.concat( [ prefix + value.substring(0, idx), value.substring(idx + 1) ] );
-    } else {
-      return previous.concat( [ prefix + value ] );
-    }
-  }
   const intParser = (value, dummyPrevious) => {
     const parsedValue = parseInt(value, 10);
     if (isNaN(parsedValue)) {
@@ -415,22 +397,22 @@ export default async function cli(proc) {
   program
     .version(JSON.parse(readFileSync(__dirname + "/../package.json", "utf8")).version)
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
-    .option("-u, --url-domain-suffix <suffix1,suffix2,...>", "comma-separated list of domain suffixes used for filtering URLs for PDF generation", commaSeparatedList, DEFAULT_URL_DOMAINS)
+    .option("-u, --url-domain-suffix <suffix>", " domain suffix used for filtering URLs for PDF generation (can be specified multiple times)", collect, DEFAULT_URL_DOMAINS)
     .option("-o, --output <filepath>", "path of the PDF file to be written")
     .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, DEFAULT_PROXIES)
     .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser", DEFAULT_USER_AGENT)
-    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name)", (value, previous) => { return optParser("--", value, previous); }, DEFAULT_BROWSER_LONG_OPTIONS)
-    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name)", (value, previous) => { return optParser("-", value, previous); }, DEFAULT_BROWSER_SHORT_OPTIONS)
+    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name) (can be specified multiple times)", collect, DEFAULT_BROWSER_LONG_OPTIONS)
+    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name) (can be specified multiple times)", collect, DEFAULT_BROWSER_SHORT_OPTIONS)
     .option("-t, --timeout <milliseconds>", "network timeout used for HTTP requests by the browser", intParser, DEFAULT_TIMEOUT)
     .option("-n, --no-toc", "do not treat the URL argument as a table-of-contents, i.e. do not generate PDFs for each link found on the page")
     .option("--toc-limit <limit>", "number of pages to process in the table-of-contents", intParser, DEFAULT_TOC_LIMIT)
     .option("--no-headless", "do not run the browser in headless mode")
     .option("-i, --insecure", "ignore SSL/TLS errors")
     .option("-l, --links", "include the \"Related documents\" and \"More in this topic\" sections in the generated content pages")
-    .option("-r, --retries <number>", "number of retries to load a page without any errors", intParser, DEFAULT_RETRIES)
-    .option("-e, --page-http-errors <statuscode1,statuscode2,...>", "comma-separated list of HTTP statuscodes that if received from a page URL, triggers a retry for the given page", commaSeparatedIntList, [])
-    .option("--resource-http-errors <statuscode1,statuscode2,...>", "comma-separated list of HTTP statuscodes that if received from a domain in the \"--domain\" list while loading a resource for a page, triggers a retry for the given page", commaSeparatedIntList, [])
-    .option("--resource-http-error-domain-suffixes <suffix1,suffix2,...>", "comma-separated list of domain suffixes to watch resource HTTP errors for", commaSeparatedList, DEFAULT_HTTP_ERROR_DOMAINS)
+    .option("-r, --retries <number>", "maximum number of retries to load a page", intParser, DEFAULT_RETRIES)
+    .option("-e, --page-http-error <statuscode>", "an HTTP statuscode that if received from a page URL, triggers a retry for the given page (can be specified multiple times)", collect, [])
+    .option("--resource-http-error <statuscode>", "an HTTP statuscode that if received from a domain in the \"--domain\" list while loading a resource for a page, triggers a retry for the given page (can be specified multiple times)", collect, [])
+    .option("--resource-http-error-domain-suffix <suffix>", "a domain suffix to watch resource HTTP errors for (can be specified multipe times)", collect, DEFAULT_HTTP_ERROR_DOMAINS)
     .option("-d, --user-dir <path>", "path to a directory where the Chromium user profile (with cookies, cache) will be stored and kept even when the execution stops. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("-f, --pdf-dir <path>", "path to a directory where the intermediary PDFs are stored and kept (even when the execution stops) and looked for. This option allows to continue an interrupted PDF generation process. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("--no-pdf-cleanup", "disables removal of empty pages (on Linux)")
@@ -451,11 +433,11 @@ export default async function cli(proc) {
     .addOption(new Option("--pdf-page-size <size>", "the page format/size for the PDF (as per puppeteer's API)").choices(PAGE_SIZES).default(DEFAULT_PAGE_SIZE))
     .addOption(new Option("--idle-concurrency <number>", "maximum number concurrent of network connections to be considered inactive").argParser(intParser).default(DEFAULT_IDLE_CONCURRENCY).hideHelp())
     .action(async(url, options, command) => {
-      if (options.pageHttpErrors.length == 0) {
-        options.pageHttpErrors = DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES;
+      if (options.pageHttpError.length == 0) {
+        options.pageHttpError = DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES;
       }
-      if (options.resourceHttpErrors.length == 0) {
-        options.resourceHttpErrors = DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES;
+      if (options.resourceHttpError.length == 0) {
+        options.resourceHttpError = DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES;
       }
       await main(proc, url, options, command);
     });
