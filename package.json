@@ -1,6 +1,6 @@
 {
   "name": "pdfgen4vcman",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "unofficial PDF generator for online user manuals at volvocars.com",
   "files": [
     "bin/",

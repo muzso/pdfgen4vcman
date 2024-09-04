@@ -33,7 +33,7 @@ You can use, modify and share this software according to its license policy (see
 ### Running via Docker
 
 ```bash
-docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/work" muzso/pdfgen4vcman [options...] "<volvocars_user_manual_url>"
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/work" "muzso/pdfgen4vcman" [options...] "<volvocars_user_manual_url>"
 ```
 
 ### Running the npmjs package

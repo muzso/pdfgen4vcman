@@ -199,18 +199,18 @@ async function main(proc, url, options, command) {
   proc.on("uncaughtException", (err, origin) => {
     logger.verbose("main(): uncaughtException, ", { origin: origin, error: err });
     cleanup(options, userDirectory, pdfDirectory);
-    proc.exit(1);
+    proc.exit(99);
   });
   proc.on("unhandledRejection", (reason, promise) => {
     logger.verbose("main(): unhandledRejection, ", { reason: reason, promise: promise });
     cleanup(options, userDirectory, pdfDirectory);
-    proc.exit(1);
+    proc.exit(98);
   });
   proc.on("SIGINT", async () => {
     // graceful shutdown, i.e. clean up allocated resources
     logger.verbose("main(): SIGINT handler");
     cleanup(options, userDirectory, pdfDirectory);
-    proc.exit(1);
+    proc.exit(97);
   });
   // https://stackoverflow.com/questions/10021373/what-is-the-windows-equivalent-of-process-onsigint-in-node-js
   if (proc.platform === "win32") {
@@ -229,25 +229,26 @@ async function main(proc, url, options, command) {
     proc.exit(1);
   }
 
-  let outputfile = "";
-  if (options.output && options.output.length > 0) {
-    outputfile = options.output;
-  } else {
-    const parsedPath = parse(DEFAULT_FILENAME);
-    outputfile = join(parsedPath.dir, parsedPath.name + "_" + options.timestamp.replaceAll(/[:]/g, "-").replaceAll(/[ /\\]+/g, "_") + parsedPath.ext);
+  if (!options.output || options.output.length == 0) {
+    logger.error("main(): the output path must not be an empty string");
+    proc.exit(2);
   }
+  const outputfile = options.output;
 
   const pdfDoc = await PDFDocument.create();
 
+  let exitCode = 0;
   let pageUrls = undefined;
   if (options.toc === true) {
     logger.info("main(): generating the ToC page");
     try {
       pageUrls = await generatePdfs(puppeteer, [ url ], userDirectory, pdfDirectory, pdfDoc, options, true).catch(e => {
         logger.error("main(): PDF generation for ToC page failed with a rejection: ", e);
+        exitCode = 3;
       });
     } catch (err) {
       logger.error("main(): PDF generation for ToC page failed with an error: ", err);
+      exitCode = 4;
     }
     logger.info(`main(): number of page URLs in ToC: ${pageUrls ? pageUrls.length : 0}`);
     if (options.tocLimit > 0 && pageUrls && pageUrls.length > 0) {
@@ -265,10 +266,12 @@ async function main(proc, url, options, command) {
       await generatePdfs(puppeteer, pageUrls, userDirectory, pdfDirectory, pdfDoc, options, false).catch((e) => {
         pdfGenerationResult = false;
         logger.error("main(): PDF generation for page URLs failed with a reject: ", e);
+        exitCode = 5;
       });
     } catch (err) {
       pdfGenerationResult = false;
       logger.error("main(): PDF generation for page URLs failed with an error: ", err);
+      exitCode = 6;
     }
 
     if (pdfGenerationResult) {
@@ -320,6 +323,7 @@ async function main(proc, url, options, command) {
                           sum += val;
                         } else {
                           logger.error(`main(): in GS's output in line #${i} the field #${k} is not a number: "${line}"`);
+                          exitCode = 7;
                           sum = -1;
                           break;
                         }
@@ -346,33 +350,41 @@ async function main(proc, url, options, command) {
                 }
               } else {
                 logger.error("main(): executing Ghostscript failed, spawnSync() returned a result with empty stdout (this should not be possible)");
+                exitCode = 8;
                 logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
               }
             } else {
               logger.error(`main(): executing Ghostscript failed: exit status = ${spawnResult.status}`);
+              exitCode = 9;
               if (spawnResult.error) {
                 logger.error(`main(): error code = ${spawnResult.error.code}, error message = "${spawnResult.error.message}"`);
+                exitCode = 10;
                 if (spawnResult.error.code == "ENOENT") {
                   logger.error(`main(): ${spawnResult.error.code} means that the file at the "${cmd}" path was not found on the PATH or it could not be executed`);
+                  exitCode = 11;
                   logger.info("main(): you can specify a different path for Ghostscript by using the \"--ghostscript-path\" option or disable use of Ghostscript to remove empty pages by using the \"--no-pdf-cleanup\" option");
                 }
               }
               if (spawnResult.stdout && spawnResult.stdout.length > 0) {
                 logger.error(`main(): stdout = ${spawnResult.stdout}`);
+                exitCode = 12;
               }
               if (spawnResult.stderr && spawnResult.stderr.length > 0) {
                 logger.error(`main(): stderr = ${spawnResult.stderr}`);
+                exitCode = 13;
               }
               logger.info("main(): check \"https://nodejs.org/api/errors.html\" for description of error codes/messages that are not trivial (and/or set log level to \"verbose\" or higher to get more details on the error");
               logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs, result: spawnResult } );
             }
           } else {
             logger.error("main(): executing Ghostscript failed, spawnSync() returned empty result (this should not be possible)");
+            exitCode = 14;
             logger.verbose("main(): child process details: ", { cmd: cmd, args: cmdArgs } );
           }
         }
       } else {
         logger.error("main(): no pages were produced in the combined PDF");
+        exitCode = 15;
       }
     }
   }
@@ -380,10 +392,18 @@ async function main(proc, url, options, command) {
   cleanup(options, userDirectory, pdfDirectory);
   
   logger.info("main(): finished");
+  // This is not exactly "nice", but I've no idea (based on the documentation)
+  // how Commander's parseAsync() handles the action's return value.
+  if (exitCode > 0) {
+    proc.exit(exitCode);
+  }
 }
 
 export default async function cli(proc) {
   const timestamp = getFormattedTimestamp();
+  const defaultTitleCaption = timestamp + " GMT";
+  const parsedPath = parse(DEFAULT_FILENAME);
+  const defaultOutput = join(parsedPath.dir, parsedPath.name + "_" + timestamp.replaceAll(/[:]/g, "-").replaceAll(/[ /\\]+/g, "_") + parsedPath.ext);
   const collect = (value, previous)  => {
     return previous.concat( [ value ] );
   };
@@ -398,7 +418,7 @@ export default async function cli(proc) {
     .version(JSON.parse(readFileSync(__dirname + "/../package.json", "utf8")).version)
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
     .option("-u, --url-domain-suffix <suffix>", " domain suffix used for filtering URLs for PDF generation (can be specified multiple times)", collect, DEFAULT_URL_DOMAINS)
-    .option("-o, --output <filepath>", "path of the PDF file to be written")
+    .option("-o, --output <filepath>", "path of the PDF file to be written", defaultOutput)
     .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, DEFAULT_PROXIES)
     .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser", DEFAULT_USER_AGENT)
     .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name) (can be specified multiple times)", collect, DEFAULT_BROWSER_LONG_OPTIONS)
@@ -426,7 +446,7 @@ export default async function cli(proc) {
     .option("--force", "render pages and save them as PDF even if a PDF for the given URL already exists in the \"--pdf-dir\" directory")
     .option("-w, --wait-time <seconds>", "number of seconds to wait if we've tried all proxies and all resulted in HTTP errors and/or throttling", DEFAULT_WAIT_TIME)
     .option("--pdf-timeout <milliseconds>", "PDF generation timeout", DEFAULT_PDF_TIMEOUT)
-    .option("--timestamp <string>", "the timestamp string used in the default filename and the table-of-contents page", timestamp)
+    .option("--title-caption <string>", "a string to be put below the document title on the table-of-contents page", defaultTitleCaption)
     .option("-c, --leniency", "increase the leniency towards the server (i.e. save the page as PDF even despite some errors from the server), you can specify this option multiple times. This can speed up the overall PDF generation process, but might result in a couple of missing images.", (d, p) => { return p + 1 }, DEFAULT_LENIENCY)
     .option("-b, --new-browser-per-urls <number>", "start a new browser after having processed this many URLs, regardless of whether there were any HTTP errors", DEFAULT_NEW_BROWSER_PER_URLS)
     .addOption(new Option("--log-level <level>", "set the log level").choices(Object.keys(logger.levels)).default(DEFAULT_LOG_LEVEL))
