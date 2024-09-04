@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2024-09-04
+
+### Added
+
+- Added the `nss` Alpine package to the docker image, because it's a dependency of Chromium and most online sources suggest to have it in there. The `chromium` package already has a `so:libnss3.so` dependency, which I think installs `nss`, but it won't hurt to have this package dependency explicitly in our build.
+- Added two new font packages to the docker image build (`font-freefont`, `font-opensans`).
+- The docker image now contains the `Dockerfile` and the `CHANGELOG.md` too.
+
+### Changed
+
+- The base docker image got more specific: added NodeJS's minor and patch version too to improve the reproducibility of docker image builds.
+- Upgraded NodeJS dependencies to their latest versions (puppeteer: 23.2.2, winston: 3.14.2).
+
+### Fixed
+
+- Alpine's Chromium was (recently?) updated from 126.\* to 128.\* (this change creeped into the 1.0.8 release) and this broke the way this project used Chromium on Arm64 (aarch64) CPUs. To fix this, Alpine's Chromium SwiftShader package (`chromium-swiftshader`) was added. An alternative could have been to use `--disable-gpu` cmdline switch, but from online sources it seemed to me that this switch is on its way of getting deprecated.
+
 ## [1.0.8] - 2024-09-02
 
 ### Added

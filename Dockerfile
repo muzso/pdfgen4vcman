@@ -1,4 +1,4 @@
-FROM node:22-alpine3.20
+FROM node:22.8.0-alpine3.20
 
 # Update packages of the base image,
 # install essential packages (including Chromium),
@@ -7,31 +7,42 @@ RUN apk update \
   && apk add --no-cache \
     ca-certificates \
     tzdata \
-    ghostscript \
     # Chromium version must be supported by the given Puppeteer version.
     # https://pptr.dev/supported-browsers
-    # We ensure this by fixing the base image (Alpine release version).
+    # Since distros' Chromium package is continuously upgraded even
+    # including major version upgrades (within the same Alpine patch version!!!),
+    # the only solution is to keep Puppeteer's version updated all the time.
+    # Note: we use Alpine's Chromium because allegedly the version downloaded
+    # by Puppeteer doesn't work in Alpine.
     chromium \
+    # Without SwiftShader (or the "--disable-gpu" switch) the upgrade from
+    # Chromium 126.* to 128.* broke Chromium on Arm64 CPUs. The renderer
+    # process would get stuck with 100% CPU load.
+    chromium-swiftshader \
+    nss \
+    ghostscript \
     freetype \
     harfbuzz \
     msttcorefonts-installer \
     font-carlito \
-    font-noto-cjk \
-    font-noto-cjk-extra \
-    font-tlwg \
+    font-freefont \
     font-liberation \
     font-liberation-sans-narrow \
+    font-noto-cjk \
+    font-noto-cjk-extra \
+    font-opensans \
     font-roboto \
+    font-tlwg \
   && update-ca-certificates \
   && update-ms-fonts
 
-# Puppeteer downloaded Chromium will not work on Alpine.
+# Puppeteer downloaded Chromium will not work on Alpine (allegedly).
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD="true" \
   PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium-browser"
 
 COPY ./bin/ /app/bin/
 COPY ./lib/ /app/lib/
-COPY ./index.js ./package*.json ./README.md ./LICENSE /app/
+COPY ./index.js ./package*.json ./Dockerfile ./CHANGELOG.md ./README.md ./LICENSE /app/
 
 # Create user, set owner and permissions
 RUN adduser -D -g "" appuser \
