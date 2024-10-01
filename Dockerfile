@@ -1,4 +1,4 @@
-FROM node:22.8.0-alpine3.20
+FROM node:22.9.0-alpine3.20
 
 # Update packages of the base image,
 # install essential packages (including Chromium),

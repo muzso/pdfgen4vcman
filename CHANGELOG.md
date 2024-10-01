@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2024-10-01
+
+### Added
+
+- Print Alpine and NodeJS versions to stdout if `--log-level debug` option is used.
+
+### Changed
+
+- Upgraded docker image dependency (`node:22.8.0-alpine3.20` -> `node:22.9.0-alpine3.20`).
+- Upgraded npm dependencies (puppeteer: 23.2.2 -> 23.4.1).
+
+### Fixed
+
+- There was an unnecessary space at the start of one of the cmdline option descriptions.
+- The removal of Volvo's nagging "Do you have a second?" popup was mistakenly depending on the existence of the cookie consent popup.
+
 ## [1.0.10] - 2024-09-04
 
 ### Changed

@@ -417,7 +417,7 @@ export default async function cli(proc) {
   program
     .version(JSON.parse(readFileSync(__dirname + "/../package.json", "utf8")).version)
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
-    .option("-u, --url-domain-suffix <suffix>", " domain suffix used for filtering URLs for PDF generation (can be specified multiple times)", collect, DEFAULT_URL_DOMAINS)
+    .option("-u, --url-domain-suffix <suffix>", "domain suffix used for filtering URLs for PDF generation (can be specified multiple times)", collect, DEFAULT_URL_DOMAINS)
     .option("-o, --output <filepath>", "path of the PDF file to be written", defaultOutput)
     .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, DEFAULT_PROXIES)
     .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser", DEFAULT_USER_AGENT)
