@@ -328,12 +328,11 @@ async function main(proc, url, options, command) {
                           break;
                         }
                       }
+                      logger.debug(`main(): page #${i} ink coverage sum: ${sum}`);
                       if (sum >= 0 && sum < options.pdfCleanupThreshold) {
                         logger.verbose(`main(): removing page #${i} from the output (ink coverage sum: ${sum})`);
                         pdfDoc.removePage(i - removedPageCount);
                         removedPageCount++;
-                      } else {
-                        logger.debug(`main(): page #${i} ink coverage sum: ${sum}`);
                       }
                     } else {
                       logger.debug(`main(): line #${i} in GS output doesn't have 4 or more fields`);

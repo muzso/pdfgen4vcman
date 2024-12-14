@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.12] - 2024-12-14
+
+### Changed
+
+- Upgraded docker image dependency (`node:22.9.0-alpine3.20` -> `node:22.12.0-alpine3.21`).
+- Upgraded npm dependencies (puppeteer: 23.4.1 -> 23.10.4, winston: 3.14.2 -> 3.17.0).
+
+### Fixed
+
+- Volvo added a new nag which has to be removed: "Customised support ... Sign in".
+- The "Related articles" and "More in this topic" sections were refactored.
+
 ## [1.0.11] - 2024-10-01
 
 ### Added
