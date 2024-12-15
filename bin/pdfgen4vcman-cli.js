@@ -427,6 +427,7 @@ export default async function cli(proc) {
     .option("--toc-limit <limit>", "number of pages to process in the table-of-contents", intParser, DEFAULT_TOC_LIMIT)
     .option("--no-headless", "do not run the browser in headless mode")
     .option("-i, --insecure", "ignore SSL/TLS errors")
+    .option("-y, --hyphenation", "allow automatic hyphenation if the page/browser decides for it (by default hyphenation will be disabled)")
     .option("-l, --links", "include the \"Related documents\" and \"More in this topic\" sections in the generated content pages")
     .option("-r, --retries <number>", "maximum number of retries to load a page", intParser, DEFAULT_RETRIES)
     .option("-e, --page-http-error <statuscode>", "an HTTP statuscode that if received from a page URL, triggers a retry for the given page (can be specified multiple times)", collect, [])

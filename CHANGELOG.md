@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2024-12-15
+
+### Changed
+
+- Added the option to allow automatic hyphenation within the page and browser. By default hyphenation will be disabled by adding custom CSS code to the page. This makes PDF rendering more consistent, since hyphenation can (for some reason) cause variations even on the same page with the same content.
+
 ## [1.0.12] - 2024-12-14
 
 ### Changed
