@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.14] - 2024-12-27
+
+### Added
+
+- In some regions (e.g. en-ca) the VolvoCars portal doesn't provide a "Reject All" button for cookie consent. Instead an "Accept" button appears. From now on if the "Reject All" button does not appear, we look for the "Accept" button to click.
+- The chat opening button is removed too.
+
+### Changed
+
+- The `leniency` option has now more steps/granularity.
+
 ## [1.0.13] - 2024-12-15
 
 ### Changed
