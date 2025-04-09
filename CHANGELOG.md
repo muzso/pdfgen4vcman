@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The browser's major version (for use in the default user-agent) is now determined from the shipped browser's major version.
 - A list of regular expressions can be specified as a `--resource-http-error-url-exception` commandline option and if any of them matches the URL of a resource of a page, then any HTTP error is ignored during page load error detection.
-- The style of the ToC page is now modified a bit to make it more compact. (thanks to @mpbzh)
+- The style of the ToC page is now modified a bit to make it more compact. (thanks to [mpbzh](https://github.com/mpbzh))
 
 ### Fixed
 
