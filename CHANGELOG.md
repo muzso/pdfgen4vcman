@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2025-04-09
+
+### Added
+
+- The browser's major version (for use in the default user-agent) is now determined from the shipped browser's major version.
+- A list of regular expressions can be specified as a `--resource-http-error-url-exception` commandline option and if any of them matches the URL of a resource of a page, then any HTTP error is ignored during page load error detection.
+- The style of the ToC page is now modified a bit to make it more compact. (thanks to @mpbzh)
+
+### Fixed
+
+- Changelog release section order was inconsistent with keepachangelog's order.
+- An HTTP 200 response was always considered a success, regardless of the values specified by the `--resource-http-error` options (if any). Of course it is highly unlikely that somebody specifies "200" as an erroneous response code.
+- Volvo changed the page DOM layout a bit. The CSS selectors for some DOM modifications had to be adjusted.
+
+### Changed
+
+- Upgraded docker image dependency (`node:22.12.0-alpine3.20` -> `node:22.14.0-alpine3.21`).
+- Upgraded npm dependencies (commander: 12.1.0 -> 13.1.0, puppeteer: 23.10.4 -> 24.6.0, node: 20.11.1 -> 20.19.0).
+- Marked commandline options (in their help descriptions) which extend a built-in default value instead of overwriting it.
+- The iframe removing code was made more efficient.
+
 ## [1.0.14] - 2024-12-27
 
 ### Added
@@ -23,15 +44,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.0.12] - 2024-12-14
 
-### Changed
-
-- Upgraded docker image dependency (`node:22.9.0-alpine3.20` -> `node:22.12.0-alpine3.21`).
-- Upgraded npm dependencies (puppeteer: 23.4.1 -> 23.10.4, winston: 3.14.2 -> 3.17.0).
-
 ### Fixed
 
 - Volvo added a new nag which has to be removed: "Customised support ... Sign in".
 - The "Related articles" and "More in this topic" sections were refactored.
+
+### Changed
+
+- Upgraded docker image dependency (`node:22.9.0-alpine3.20` -> `node:22.12.0-alpine3.21`).
+- Upgraded npm dependencies (puppeteer: 23.4.1 -> 23.10.4, winston: 3.14.2 -> 3.17.0).
 
 ## [1.0.11] - 2024-10-01
 
@@ -39,15 +60,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Print Alpine and NodeJS versions to stdout if `--log-level debug` option is used.
 
-### Changed
-
-- Upgraded docker image dependency (`node:22.8.0-alpine3.20` -> `node:22.9.0-alpine3.20`).
-- Upgraded npm dependencies (puppeteer: 23.2.2 -> 23.4.1).
-
 ### Fixed
 
 - There was an unnecessary space at the start of one of the cmdline option descriptions.
 - The removal of Volvo's nagging "Do you have a second?" popup was mistakenly depending on the existence of the cookie consent popup.
+
+### Changed
+
+- Upgraded docker image dependency (`node:22.8.0-alpine3.20` -> `node:22.9.0-alpine3.20`).
+- Upgraded npm dependencies (puppeteer: 23.2.2 -> 23.4.1).
 
 ## [1.0.10] - 2024-09-04
 
@@ -65,14 +86,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added two new font packages to the docker image build (`font-freefont`, `font-opensans`).
 - The docker image now contains the `Dockerfile` and the `CHANGELOG.md` too.
 
+### Fixed
+
+- Alpine's Chromium was (recently?) updated from 126.\* to 128.\* (this change creeped into the 1.0.8 release) and this broke the way this project used Chromium on Arm64 (aarch64) CPUs. To fix this, Alpine's Chromium SwiftShader package (`chromium-swiftshader`) was added. An alternative could have been to use `--disable-gpu` cmdline switch, but from online sources it seemed to me that this switch is on its way of getting deprecated.
+
 ### Changed
 
 - The base docker image got more specific: added NodeJS's minor and patch version too to improve the reproducibility of docker image builds.
 - Upgraded NodeJS dependencies to their latest versions (puppeteer: 23.2.2, winston: 3.14.2).
-
-### Fixed
-
-- Alpine's Chromium was (recently?) updated from 126.\* to 128.\* (this change creeped into the 1.0.8 release) and this broke the way this project used Chromium on Arm64 (aarch64) CPUs. To fix this, Alpine's Chromium SwiftShader package (`chromium-swiftshader`) was added. An alternative could have been to use `--disable-gpu` cmdline switch, but from online sources it seemed to me that this switch is on its way of getting deprecated.
 
 ## [1.0.8] - 2024-09-02
 
@@ -80,15 +101,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - the browser's version string is logged on verbose level
 
-### Changed
-
-- a couple of commandline option arguments accepted a comma-separated argument list, these have no been modified so that the option itself can be used multiple times and the arguments are collected into a list (these options are: `--url-domain-suffix`, `--page-http-errors`, `--resource-http-errors`, `--resource-http-error-domain-suffixes`)
-- all calls to document.querySelector() have been changed into document.querySelectorAll(), because it is more robust
-
 ### Fixed
 
 - `--browser-long-option` and `--browser-short-option` option arguments were not parsed correctly and default value was not shown in the format that is expected for the option's argument
 - Volvo added a new nagging popup which must be handled as well (besides the cookie consent popup).
+
+### Changed
+
+- a couple of commandline option arguments accepted a comma-separated argument list, these have no been modified so that the option itself can be used multiple times and the arguments are collected into a list (these options are: `--url-domain-suffix`, `--page-http-errors`, `--resource-http-errors`, `--resource-http-error-domain-suffixes`)
+- all calls to document.querySelector() have been changed into document.querySelectorAll(), because it is more robust
 
 ## [1.0.7] - 2024-07-23
 

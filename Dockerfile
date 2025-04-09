@@ -1,6 +1,6 @@
-FROM node:22.12.0-alpine3.21
+FROM node:22.14.0-alpine3.21
 
-# Update packages of the base image,
+# Update package index,
 # install essential packages (including Chromium),
 # update TLS root certificates.
 RUN apk update \

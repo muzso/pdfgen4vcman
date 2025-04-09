@@ -45,14 +45,15 @@ const DEFAULT_PDF_CLEANUP_THRESHOLD = 0.008;
 const DEFAULT_TOC_LIMIT = 0;
 const DEFAULT_WAIT_TIME = 0;
 const DEFAULT_FILENAME = "manual.pdf";
-const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) {VERSION} Safari/537.36";
 const DEFAULT_LOG_LEVEL = "info";
 const DEFAULT_RESOURCE_HTTP_4xx_RETRY_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 400).filter((x) => ![ 401, 404, 407 ].includes(x))
 const HTTP_4xx_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 400)
 const HTTP_5xx_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 500)
 const DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES = DEFAULT_RESOURCE_HTTP_4xx_RETRY_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
 const DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES = HTTP_4xx_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
-const DEFAULT_HTTP_ERROR_DOMAINS = [ ".volvocars.com" ];
+const DEFAULT_RESOURCE_HTTP_ERROR_DOMAIN_SUFFIXES = [ ".volvocars.com" ];
+const DEFAULT_RESOURCE_HTTP_ERROR_URL_EXCEPTIONS = [ new RegExp("^https?://[^/:]+\\.volvocars\\.com/api/site-navigation/location/predictions") ];
 const PAGE_SIZES = Object.keys(PageSizes);
 const DEFAULT_PAGE_SIZE = "A4";
 const DEFAULT_LENIENCY = 0;
@@ -406,6 +407,9 @@ export default async function cli(proc) {
   const collect = (value, previous)  => {
     return previous.concat( [ value ] );
   };
+  const collectRegExps = (value, previous)  => {
+    return previous.concat( [ new RegExp(value) ] );
+  };
   const intParser = (value, dummyPrevious) => {
     const parsedValue = parseInt(value, 10);
     if (isNaN(parsedValue)) {
@@ -416,12 +420,12 @@ export default async function cli(proc) {
   program
     .version(JSON.parse(readFileSync(__dirname + "/../package.json", "utf8")).version)
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
-    .option("-u, --url-domain-suffix <suffix>", "domain suffix used for filtering URLs for PDF generation (can be specified multiple times)", collect, DEFAULT_URL_DOMAINS)
+    .option("-u, --url-domain-suffix <suffix>", "domain suffix used for filtering URLs for PDF generation (can be specified multiple times, extends the default list)", collect, DEFAULT_URL_DOMAINS)
     .option("-o, --output <filepath>", "path of the PDF file to be written", defaultOutput)
-    .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times)", collect, DEFAULT_PROXIES)
-    .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser", DEFAULT_USER_AGENT)
-    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name) (can be specified multiple times)", collect, DEFAULT_BROWSER_LONG_OPTIONS)
-    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name) (can be specified multiple times)", collect, DEFAULT_BROWSER_SHORT_OPTIONS)
+    .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times, extends the default list)", collect, DEFAULT_PROXIES)
+    .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser")
+    .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name) (can be specified multiple times, extends the default list)", collect, DEFAULT_BROWSER_LONG_OPTIONS)
+    .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name) (can be specified multiple times, extends the default list)", collect, DEFAULT_BROWSER_SHORT_OPTIONS)
     .option("-t, --timeout <milliseconds>", "network timeout used for HTTP requests by the browser", intParser, DEFAULT_TIMEOUT)
     .option("-n, --no-toc", "do not treat the URL argument as a table-of-contents, i.e. do not generate PDFs for each link found on the page")
     .option("--toc-limit <limit>", "number of pages to process in the table-of-contents", intParser, DEFAULT_TOC_LIMIT)
@@ -432,7 +436,8 @@ export default async function cli(proc) {
     .option("-r, --retries <number>", "maximum number of retries to load a page", intParser, DEFAULT_RETRIES)
     .option("-e, --page-http-error <statuscode>", "an HTTP statuscode that if received from a page URL, triggers a retry for the given page (can be specified multiple times)", collect, [])
     .option("--resource-http-error <statuscode>", "an HTTP statuscode that if received from a domain in the \"--domain\" list while loading a resource for a page, triggers a retry for the given page (can be specified multiple times)", collect, [])
-    .option("--resource-http-error-domain-suffix <suffix>", "a domain suffix to watch resource HTTP errors for (can be specified multipe times)", collect, DEFAULT_HTTP_ERROR_DOMAINS)
+    .option("--resource-http-error-domain-suffix <suffix>", "a domain suffix to watch resource HTTP errors for (can be specified multipe times, extends the default list)", collect, DEFAULT_RESOURCE_HTTP_ERROR_DOMAIN_SUFFIXES)
+    .option("--resource-http-error-url-exception", "a regular expression for the URL of a resource of the page and if matched, HTTP errors are ignored (can be specified multipe times, extends the default list)", collectRegExps, DEFAULT_RESOURCE_HTTP_ERROR_URL_EXCEPTIONS)
     .option("-d, --user-dir <path>", "path to a directory where the Chromium user profile (with cookies, cache) will be stored and kept even when the execution stops. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("-f, --pdf-dir <path>", "path to a directory where the intermediary PDFs are stored and kept (even when the execution stops) and looked for. This option allows to continue an interrupted PDF generation process. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("--no-pdf-cleanup", "disables removal of empty pages (on Linux)")
@@ -459,6 +464,7 @@ export default async function cli(proc) {
       if (options.resourceHttpError.length == 0) {
         options.resourceHttpError = DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES;
       }
+      options.defaultUserAgent = DEFAULT_USER_AGENT;
       await main(proc, url, options, command);
     });
   await program.parseAsync(proc.argv);
