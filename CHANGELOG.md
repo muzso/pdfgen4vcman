@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Changelog release section order was inconsistent with keepachangelog's order.
 - An HTTP 200 response was always considered a success, regardless of the values specified by the `--resource-http-error` options (if any). Of course it is highly unlikely that somebody specifies "200" as an erroneous response code.
 - Volvo changed the page DOM layout a bit. The CSS selectors for some DOM modifications had to be adjusted.
+- A resource URL started to return HTTP 400 consistently, thus the PDF generation failed every time. The default value of the new `--resource-http-error-url-exception` option fixes this.
 
 ### Changed
 
