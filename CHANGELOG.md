@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.16] - 2025-04-15
+
+### Added
+
+- If verbose logging is enabled, the server response time of page resource URL requests is logged now as well. Response time = (time of start of receiving the response header) - (time of end of sending of the request).
+
+### Fixed
+
+- The `ignoreHTTPSErrors` puppeteer.launch() option changed to `acceptInsecureCerts`, thus our `--insecure` option was not working.
+- Sometimes the "Customised support (...) Sign in" element appears on the user manual pages with a slight delay and this could result in the issue that our removing code snippet did not find it (thus it was not removed), but it appeared a couple of milliseconds later and it got into the generated PDF. Now we wait (with a timeout) for this DIV to appear so we can remove it. Of course this means that if Volvo removes or changes this DIV, then it will cause us to always wait for the timeout, thus it will make PDF generation a lot slower.
+
+### Changed
+
+- Updated the description of the `--proxy` commandline option to be more helpful.
+
 ## [1.0.15] - 2025-04-09
 
 ### Added

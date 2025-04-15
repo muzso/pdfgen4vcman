@@ -422,7 +422,7 @@ export default async function cli(proc) {
     .argument("<url>", "the URL for the table-of-contents page of the Volvo user manual")
     .option("-u, --url-domain-suffix <suffix>", "domain suffix used for filtering URLs for PDF generation (can be specified multiple times, extends the default list)", collect, DEFAULT_URL_DOMAINS)
     .option("-o, --output <filepath>", "path of the PDF file to be written", defaultOutput)
-    .option("-p, --proxy <proxy-spec>", "a proxy URL to be used for HTTP requests by the browser (can be specified multiple times, extends the default list)", collect, DEFAULT_PROXIES)
+    .option("-p, --proxy <proxy-spec>", "a proxy specification to be used for HTTP requests by the browser (can be specified multiple times and the list will be used in a round-robin fashion, extends the default list, value must conform with Chromium's \"--proxy-server\" commandline argument)", collect, DEFAULT_PROXIES)
     .option("-a, --user-agent <user-agent>", "the user-agent string used for HTTP requests by the browser")
     .option("--browser-long-option <name[,value]>", "a long commandline option for the browser (skip the \"--\" prefix from the option name) (can be specified multiple times, extends the default list)", collect, DEFAULT_BROWSER_LONG_OPTIONS)
     .option("--browser-short-option <name[,value]>", "a short commandline option for the browser (skip the \"-\" prefix from the option name) (can be specified multiple times, extends the default list)", collect, DEFAULT_BROWSER_SHORT_OPTIONS)
