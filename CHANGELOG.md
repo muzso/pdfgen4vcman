@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.17] - yyyy-mm-dd
+
+### Fixed
+
+- A couple of DOM manipulations ran on the ToC page too, but were only inteded for non-ToC pages.
+
+### Changed
+
+- Removed a couple of variables which were only used once and didn't make code that much more readable.
+- Refined the edge cases and logging of the "Customised support (...) Sign in" DIV removal.
+
 ## [1.0.16] - 2025-04-15
 
 ### Added
