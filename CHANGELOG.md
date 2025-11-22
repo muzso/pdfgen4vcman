@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.18] - 2025-11-22
+
+### Fixed
+
+- Forgot to update the NodeJS version in the GitHub workflow, thus no npm package was generated and published.
+- Turns out GitHub's node-* actions don't support yet 25.*.*, the latest is 24.11.1 (as per [https://github.com/actions/node-versions/releases](https://github.com/actions/node-versions/releases) at the moment of writing). So I've changed all NodeJS version requirements to this version.
+
 ## [1.0.17] - 2025-11-22
 
 ### Added
