@@ -1,4 +1,4 @@
-FROM node:22.14.0-alpine3.21
+FROM node:25.2.1-alpine3.22
 
 # Update package index,
 # install essential packages (including Chromium),

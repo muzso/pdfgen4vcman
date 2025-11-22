@@ -4,16 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.17] - yyyy-mm-dd
+## [1.0.17] - 2025-11-22
+
+### Added
+
+- Added additional logging to further help debugging.
 
 ### Fixed
 
-- A couple of DOM manipulations ran on the ToC page too, but were only inteded for non-ToC pages.
+- The cookie consent screen changed again, so the respective handling code had to be refactored.
+- The placement of the "Customised support (...) Sign in" part changed again, so the respective code had to be adjusted.
 
 ### Changed
 
-- Removed a couple of variables which were only used once and didn't make code that much more readable.
-- Refined the edge cases and logging of the "Customised support (...) Sign in" DIV removal.
+- Upgraded npm dependencies (commander: 13.1.0 -> 14.0.2, es-main: 1.3.0 -> 1.4.0, puppeteer: 24.6.0 -> 24.31.0, node: 20.19.0 -> 25.2.1).
+- Upgraded docker image dependency (node:22.14.0-alpine3.21 -> node:25.2.1-alpine3.22).
 
 ## [1.0.16] - 2025-04-15
 
