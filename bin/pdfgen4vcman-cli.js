@@ -67,6 +67,10 @@ const DEFAULT_BROWSER_SHORT_OPTIONS = [];
 const DEFAULT_GHOSTSCRIPT_PATH = "gs";
 const DEFAULT_PDF_TOP_BOTTOM_MARGIN = 50;
 const DEFAULT_PDF_LEFT_RIGHT_MARGIN = 0;
+// note: sometimes javascript on VolvoCars manual pages collapse due to some bug/error
+// The error message usually is: "Application error: a client-side exception has occurred while loading www.volvocars.com (see the browser console for more information)."
+// Looking for the "client-side" text is a good marker that such a problem occured.
+const DEFAULT_PAGE_ERROR_TEXT_PATTERNS = [ "client-side", "server-side" ];
 
 // return the current date & time in "YYYY-MM-DD HH:MI:SS" format (in GMT timezone)
 function getFormattedTimestamp() {
@@ -457,6 +461,7 @@ export default async function cli(proc) {
     .addOption(new Option("--log-level <level>", "set the log level").choices(Object.keys(logger.levels)).default(DEFAULT_LOG_LEVEL))
     .addOption(new Option("--pdf-page-size <size>", "the page format/size for the PDF (as per puppeteer's API)").choices(PAGE_SIZES).default(DEFAULT_PAGE_SIZE))
     .addOption(new Option("--idle-concurrency <number>", "maximum number concurrent of network connections to be considered inactive").argParser(intParser).default(DEFAULT_IDLE_CONCURRENCY).hideHelp())
+    .option("--page-error-text-pattern <pattern>", "a string which if found on the page -right before PDF rendering-, causes an error and usually a retry for that page (can be specified multipe times, extends the default list)", collect, DEFAULT_PAGE_ERROR_TEXT_PATTERNS)
     .action(async(url, options, command) => {
       if (options.pageHttpError.length == 0) {
         options.pageHttpError = DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES;
