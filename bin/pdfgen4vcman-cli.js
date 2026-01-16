@@ -53,7 +53,8 @@ const HTTP_5xx_STATUS_CODES = Array.from(Array(100).keys(), (x) => x + 500)
 const DEFAULT_RESOURCE_HTTP_RETRY_STATUS_CODES = DEFAULT_RESOURCE_HTTP_4xx_RETRY_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
 const DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES = HTTP_4xx_STATUS_CODES.concat(HTTP_5xx_STATUS_CODES);
 const DEFAULT_RESOURCE_HTTP_ERROR_DOMAIN_SUFFIXES = [ ".volvocars.com" ];
-const DEFAULT_RESOURCE_HTTP_ERROR_URL_EXCEPTIONS = [ new RegExp("^https?://[^/:]+\\.volvocars\\.com/api/site-navigation/location/predictions") ];
+const DEFAULT_RESOURCE_HTTP_ERROR_URL_EXCEPTIONS = [ new RegExp("^https?://[^/:]+\\.volvocars\\.com/api/site-navigation/location/predictions"), new RegExp("\\.(mp4|mov)$") ];
+const DEFAULT_RESOURCE_HTTP_ERROR_ALLOWED = 1;
 const PAGE_SIZES = Object.keys(PageSizes);
 const DEFAULT_PAGE_SIZE = "A4";
 const DEFAULT_LENIENCY = 0;
@@ -395,10 +396,10 @@ async function main(proc, url, options, command) {
 
   cleanup(options, userDirectory, pdfDirectory);
   
-  logger.info("main(): finished");
+  logger.info(`main(): finished, exitCode: ${exitCode}`);
   // This is not exactly "nice", but I've no idea (based on the documentation)
   // how Commander's parseAsync() handles the action's return value.
-  if (exitCode > 0) {
+  if (exitCode > 0 && !options.keepBrowser) {
     proc.exit(exitCode);
   }
 }
@@ -442,6 +443,7 @@ export default async function cli(proc) {
     .option("--resource-http-error <statuscode>", "an HTTP statuscode that if received from a domain in the \"--domain\" list while loading a resource for a page, triggers a retry for the given page (can be specified multiple times)", collect, [])
     .option("--resource-http-error-domain-suffix <suffix>", "a domain suffix to watch resource HTTP errors for (can be specified multipe times, extends the default list)", collect, DEFAULT_RESOURCE_HTTP_ERROR_DOMAIN_SUFFIXES)
     .option("--resource-http-error-url-exception", "a regular expression for the URL of a resource of the page and if matched, HTTP errors are ignored (can be specified multipe times, extends the default list)", collectRegExps, DEFAULT_RESOURCE_HTTP_ERROR_URL_EXCEPTIONS)
+    .option("--resource-http-error-allowed <limit>", "at most this number of page resource errors won't trigger a retry or page load failure", intParser, DEFAULT_RESOURCE_HTTP_ERROR_ALLOWED)
     .option("-d, --user-dir <path>", "path to a directory where the Chromium user profile (with cookies, cache) will be stored and kept even when the execution stops. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("-f, --pdf-dir <path>", "path to a directory where the intermediary PDFs are stored and kept (even when the execution stops) and looked for. This option allows to continue an interrupted PDF generation process. If not specified, a random temporary directory is created for the duration of the run and is deleted, when execution stops.")
     .option("--no-pdf-cleanup", "disables removal of empty pages (on Linux)")
@@ -452,16 +454,17 @@ export default async function cli(proc) {
     .option("--pdf-top-bottom-margin", "set the top and bottom margins for PDF generation", intParser, DEFAULT_PDF_TOP_BOTTOM_MARGIN)
     .option("--pdf-left-right-margin", "set the left and right margins for PDF generation", intParser, DEFAULT_PDF_LEFT_RIGHT_MARGIN)
     .option("--pdf-display-header-footer", "display the page header and footer during PDF generation")
-    .option("--force", "render pages and save them as PDF even if a PDF for the given URL already exists in the \"--pdf-dir\" directory")
+    .option("--force-save", "render pages and save them as PDF even if a PDF for the given URL already exists in the \"--pdf-dir\" directory")
     .option("-w, --wait-time <seconds>", "number of seconds to wait if we've tried all proxies and all resulted in HTTP errors and/or throttling", DEFAULT_WAIT_TIME)
     .option("--pdf-timeout <milliseconds>", "PDF generation timeout", DEFAULT_PDF_TIMEOUT)
     .option("--title-caption <string>", "a string to be put below the document title on the table-of-contents page", defaultTitleCaption)
-    .option("-c, --leniency", "increase the leniency towards the server (i.e. save the page as PDF even despite some errors from the server), you can specify this option multiple times. This can speed up the overall PDF generation process, but might result in a couple of missing images.", (d, p) => { return p + 1 }, DEFAULT_LENIENCY)
+    .option("-c, --leniency", "increase the \"leniency\" towards the server (i.e. save the page as PDF even despite some errors from the server), you can specify this option multiple times. This can speed up the overall PDF generation process, but might result in a couple of missing images. Check implementation in generator.js for details.", (d, p) => { return p + 1 }, DEFAULT_LENIENCY)
     .option("-b, --new-browser-per-urls <number>", "start a new browser after having processed this many URLs, regardless of whether there were any HTTP errors", DEFAULT_NEW_BROWSER_PER_URLS)
     .addOption(new Option("--log-level <level>", "set the log level").choices(Object.keys(logger.levels)).default(DEFAULT_LOG_LEVEL))
     .addOption(new Option("--pdf-page-size <size>", "the page format/size for the PDF (as per puppeteer's API)").choices(PAGE_SIZES).default(DEFAULT_PAGE_SIZE))
     .addOption(new Option("--idle-concurrency <number>", "maximum number concurrent of network connections to be considered inactive").argParser(intParser).default(DEFAULT_IDLE_CONCURRENCY).hideHelp())
     .option("--page-error-text-pattern <pattern>", "a string which if found on the page -right before PDF rendering-, causes an error and usually a retry for that page (can be specified multipe times, extends the default list)", collect, DEFAULT_PAGE_ERROR_TEXT_PATTERNS)
+    .option("--keep-browser", "keep the browser running at the end")
     .action(async(url, options, command) => {
       if (options.pageHttpError.length == 0) {
         options.pageHttpError = DEFAULT_PAGE_HTTP_RETRY_STATUS_CODES;

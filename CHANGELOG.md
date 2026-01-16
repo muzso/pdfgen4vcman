@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.20] - 2026-01-16
+
+### Added
+
+- The new `--resource-http-error-allowed` option allows a number of page resource URL loading errors without triggering a page load retry or failure.
+- The new `--keep-browser` option makes sure that the browser keeps running at the end. This makes our script not exit too, but that's OK. Once we close the browser, the script exits. Note that this also means that we don't remove the temporary work folders (from `/tmp`). This option can be used together with `--no-headless` to dig around in the last processed page (e.g. to debug PDF generation errors, etc.).
+
+### Fixed
+
+- VolvoCars changed the classes of "Related articles" and "More in this topic" sections again, so I had to adjust the logic I was using to find them. The change I made is backwards compatible, which gives me a small hope that it might be now more future-proof too.
+
+### Changed
+
+- The default value of the `--resource-http-error-url-exception` option now contains a regexp to match mp4 and mov files. Video files are not needed for PDF generation anyway and they are among the biggest resources files of any page.
+- Renamed the `--force` option into `--force-save`, because the former name was too generic and I might want to add other `--force--...` options in the future.
+- Added a browserPage.bringToFront() call after page manipulations are done, but before PDF generation begins. This is an attempt for a workaround for some timeouts that I've seen happening during the browserPage.pdf() call.
+- Upgraded npm dependencies (puppeteer: 24.31.0 -> 24.35.0, node: 24.11.1 -> 24.13.0, winston: 3.18.3 -> 3.19.0).
+- Upgraded docker image dependency (node:24.11.1-alpine3.22 -> node:24.13.0-alpine3.23).
+
 ## [1.0.19] - 2025-11-24
 
 ### Added

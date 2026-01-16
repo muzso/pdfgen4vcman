@@ -126,3 +126,15 @@ For some reason a couple URLs in the user manuals result in an empty (or mostly 
 `pdfgen4vcman` contains support for automatic detection and removal of these pages by using Ghostscript's [ink coverage](https://ghostscript.readthedocs.io/en/latest/Devices.html#ink-coverage-output) output. You can disable or finetune this post-processing using commandline options.
 
 The Ghostscript executable is searched for using the standard `gs` name, but this can be customized via an option.
+
+## Server errors
+
+Sometimes PDF generation starts to fail out of the blue. This is usually caused by Volvo's CDN caching client errors.
+
+E.g. it can happen that an image or a video URL starts to consistently return HTTP 400 errors for a couple of days, because such an error occured once (for one client) and the CDN cached the response from the origin server and returns the same error for the cached entry's lifespan (a couple of days) for all clients.
+
+There's not much we can do about this, apart from waiting out the expiry of that specific cached URL, or running `pdfgen4vcman` with an exclusion regex (see the `--resource-http-error-url-exception` commandline option) for that specific URL for the cache'd entry's lifespan.
+
+By default the latter option ignores errors for URLS ending with ".mp4" or ".mov" filename extensions (i.e. video files), but this is just a workaround for a specific CDN error caching issue I've met. We don't need video files for PDF generation, so any errors for them can be safely ignored.
+
+I've added one feature to compensate for such issues: the `--resource-http-error-allowed` option allows a number of page resource URL loading errors without triggering a page load retry or failure. This is set to `1` by default, so if a page load would fail only because of one (badly cached) CDN URL error, it'll still proceed with the PDF generation.
